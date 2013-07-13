@@ -4,7 +4,9 @@ import android.content.Context;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Canvas;
+import android.graphics.Color;
 import android.graphics.Paint;
+import android.graphics.Paint.Style;
 import android.view.SurfaceHolder;
 import android.view.SurfaceView;
 
@@ -12,6 +14,19 @@ public class MyView extends SurfaceView implements Runnable {
 	Paint paint;
 	SurfaceHolder holder;
 	Thread renderThread = null;
+	
+	private Bitmap mBackground;
+
+	private int mWidth;
+	private int mHeight;
+
+	public int getmWidth() {
+		return mWidth;
+	}
+
+	public int getmHeight() {
+		return mHeight;
+	}
 
 	volatile boolean running = false;
 	boolean catVisible;
@@ -19,6 +34,11 @@ public class MyView extends SurfaceView implements Runnable {
 	boolean duckVisible;
 	boolean chickenFullVisible;
 	boolean chickenNotFullVisible;
+
+	boolean showMenu;
+	boolean drawDrag;
+	float dragX;
+	float dragY;
 
 	public MyView(Context context) {
 		super(context);
@@ -35,6 +55,9 @@ public class MyView extends SurfaceView implements Runnable {
 		chickenFullVisible = false;
 		chickenNotFullVisible = false;
 
+		showMenu = false;
+		drawDrag = false;
+
 		renderThread = new Thread(this);
 		renderThread.start();
 	}
@@ -44,10 +67,14 @@ public class MyView extends SurfaceView implements Runnable {
 		while (running) {
 			if (!holder.getSurface().isValid())
 				continue;
+
 			Canvas canvas = holder.lockCanvas();
-			// background
-			canvas.drawBitmap(BitmapFactory.decodeResource(getResources(),
-					R.drawable.background), 0, 0, paint);
+			
+			mBackground = BitmapFactory.decodeResource(getResources(),
+					R.drawable.background);
+			mBackground= Bitmap.createScaledBitmap(mBackground, getWidth(), getHeight(), true);
+			canvas.drawBitmap(mBackground, 0, 0, paint);
+
 			if (chickenNotFullVisible)
 				drawCharacter(canvas, R.drawable.chicken_not_full, 0.05f, 0.65f);
 			if (chickenFullVisible)
@@ -58,6 +85,18 @@ public class MyView extends SurfaceView implements Runnable {
 				drawCharacter(canvas, R.drawable.dog, 1f, 0.65f);
 			if (catVisible)
 				drawCharacter(canvas, R.drawable.cat, 1f, 0.80f);
+
+			if (drawDrag) {
+				Bitmap bitmap = BitmapFactory.decodeResource(getResources(),
+						R.drawable.ball);
+				canvas.drawBitmap(bitmap, this.dragX - bitmap.getWidth() / 2,
+						this.dragY - bitmap.getHeight(), paint);
+			}
+			if (showMenu) {
+				drawButtons(canvas);
+			} else {
+				drawShowMenu(canvas);
+			}
 			holder.unlockCanvasAndPost(canvas);
 		}
 	}
@@ -70,8 +109,10 @@ public class MyView extends SurfaceView implements Runnable {
 		canvas.drawBitmap(bitmap, cx, cy, paint);
 	}
 
-	private int mWidth;
-	private int mHeight;
+	public void drawDrag(float x, float y) {
+		this.dragX = x;
+		this.dragY = y;
+	}
 
 	@Override
 	protected void onMeasure(int widthMeasureSpec, int heightMeasureSpec) {
@@ -79,6 +120,36 @@ public class MyView extends SurfaceView implements Runnable {
 		mHeight = MeasureSpec.getSize(heightMeasureSpec);
 
 		setMeasuredDimension(mWidth, mHeight);
+	}
+
+	public void drawButtons(Canvas canvas) {
+		paint.setStyle(Style.FILL);
+		paint.setColor(Color.BLACK);
+		paint.setTextSize((float) (mHeight * 0.06));
+		canvas.drawText("Gato", (float) (mWidth * 0.05),
+				(float) (mHeight * 0.15), paint);
+		canvas.drawText("Cao", (float) (mWidth * 0.05),
+				(float) (mHeight * 0.25), paint);
+		canvas.drawText("Pato", (float) (mWidth * 0.05),
+				(float) (mHeight * 0.35), paint);
+		canvas.drawText("Galinha1", (float) (mWidth * 0.05),
+				(float) (mHeight * 0.45), paint);
+		canvas.drawText("Galinha2", (float) (mWidth * 0.05),
+				(float) (mHeight * 0.55), paint);
+		canvas.drawText("Bola*", (float) (mWidth * 0.05),
+				(float) (mHeight * 0.65), paint);
+		canvas.drawText("Play", (float) (mWidth * 0.05),
+				(float) (mHeight * 0.75), paint);
+		canvas.drawText("Esconder", (float) (mWidth * 0.05),
+				(float) (mHeight * 0.85), paint);
+	}
+	
+	public void drawShowMenu(Canvas canvas) {
+		paint.setStyle(Style.FILL);
+		paint.setColor(Color.BLACK);
+		paint.setTextSize((float) (mHeight * 0.06));
+		canvas.drawText("Menu", (float) (mWidth * 0.05),
+				(float) (mHeight * 0.15), paint);
 	}
 
 	public void drawCat() {
@@ -100,21 +171,12 @@ public class MyView extends SurfaceView implements Runnable {
 	public void drawChickenNotFull() {
 		chickenNotFullVisible = !chickenNotFullVisible;
 	}
-	/*
-	 * private void drawCat(Canvas canvas) { Bitmap bitmap =
-	 * BitmapFactory.decodeResource(getResources(), R.drawable.cat); int cx =
-	 * (int) ((mWidth - bitmap.getWidth())); int cy = (int) ((mHeight -
-	 * bitmap.getHeight()) * 0.85);
-	 * 
-	 * // canvas.rotate(-mValues[0], mWidth/2, mHeight/2); // Thanks @NickT
-	 * 
-	 * canvas.drawBitmap(bitmap, cx, cy, null);
-	 * 
-	 * canvas.drawBitmap( bitmap,
-	 * getResources().getDisplayMetrics().heightPixels / 2 - bitmap.getHeight()
-	 * / 2, getResources().getDisplayMetrics().widthPixels / 2 -
-	 * bitmap.getWidth() / 2, paint);
-	 * 
-	 * Log.i("CAT2", bitmap.getWidth() + ""); }
-	 */
+
+	public void OnOffDrawDrag() {
+		drawDrag = !drawDrag;
+	}
+
+	public void setShowMenu(boolean b) {
+		this.showMenu = b;
+	}
 }
